@@ -1,0 +1,12 @@
+{
+  "background_color": "#ffffff",
+  "description": "La app sin anuncios de volado mas simple 50 y 50",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "VOLADO",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "VOLADO",
+  "start_url": "/",
+  "theme_color": "#ffffff"
+}

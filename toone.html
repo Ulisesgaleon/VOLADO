@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TO ONE - SÍ / NO</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+        h1 {
+            font-weight: 300;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+            color: #888;
+        }
+        .coin-container {
+            width: 180px;
+            height: 180px;
+            perspective: 1000px;
+            cursor: pointer;
+            margin: 20px 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .coin {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 38px;
+            font-weight: bold;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+            border: 6px solid #ffffff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .yes {
+            background-color: #2ecc71;
+            color: #ffffff;
+        }
+        .no {
+            background-color: #e74c3c;
+            color: #ffffff;
+            transform: rotateY(180deg);
+        }
+        .result {
+            margin-top: 30px;
+            font-size: 28px;
+            font-weight: 600;
+            min-height: 40px;
+            letter-spacing: 1px;
+        }
+        .instructions {
+            margin-top: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>TO ONE</h1>
+
+    <div class="coin-container" id="coinContainer">
+        <div class="coin" id="coin">
+            <div class="face yes">SÍ</div>
+            <div class="face no">NO</div>
+        </div>
+    </div>
+
+    <div class="result" id="resultText">Toca la moneda</div>
+    <div class="instructions">Haz clic en la moneda o presiona la barra espaciadora</div>
+
+    <script>
+        const coin = document.getElementById('coin');
+        const coinContainer = document.getElementById('coinContainer');
+        const resultText = document.getElementById('resultText');
+        let isFlipping = false;
+        let currentRotation = 0;
+
+        // Configuración de Audio con Web Audio API (Sin archivos externos)
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playFlipSound() {
+            try {
+                initAudio();
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'sine';
+                
+                // Efecto de zumbido oscilante simulando giro al aire
+                let now = audioCtx.currentTime;
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.linearRampToValueAtTime(800, now + 0.4);
+                osc.frequency.linearRampToValueAtTime(300, now + 0.9);
+
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.9);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.9);
+            } catch (e) {
+                console.log(e);
+            }
+        }
+
+        function playLandingSound() {
+            try {
+                initAudio();
+                let now = audioCtx.currentTime;
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(120, now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
+
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } catch (e) {
+                console.log(e);
+            }
+        }
+
+        function flipCoin() {
+            if (isFlipping) return;
+            isFlipping = true;
+            resultText.textContent = "Pensando...";
+
+            playFlipSound();
+
+            // 0 = SÍ (Cara frontal, 0° o múltiplos de 360°), 1 = NO (Cara trasera, 180° o múltiplos de 360° + 180°)
+            const outcome = Math.random() < 0.5 ? 0 : 1;
+            
+            // Calculamos vueltas completas adicionales (ej. 5 giros enteros = 1800 grados)
+            const fullRotations = 5 * 360;
+            
+            if (outcome === 0) {
+                // Debe caer en SÍ (0 grados relativos)
+                currentRotation += fullRotations + (360 - (currentRotation % 360));
+            } else {
+                // Debe caer en NO (180 grados relativos)
+                let targetMod = 180;
+                let currentMod = currentRotation % 360;
+                let diff = targetMod - currentMod;
+                if (diff <= 0) diff += 360;
+                currentRotation += fullRotations + diff;
+            }
+
+            coin.style.transform = `rotateY(${currentRotation}deg)`;
+
+            setTimeout(() => {
+                isFlipping = false;
+                playLandingSound();
+                if (outcome === 0) {
+                    resultText.textContent = "¡Es SÍ!";
+                } else {
+                    resultText.textContent = "¡Es NO!";
+                }
+            }, 1000);
+        }
+
+        coinContainer.addEventListener('click', flipCoin);
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                flipCoin();
+            }
+        });
+    </script>
+</body>
+</html>
